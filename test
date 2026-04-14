@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ParamScan Test — Reflections</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        padding: 18px;
+        background: #0f0f10;
+        color: #eaeaea;
+      }
+      code,
+      pre {
+        background: #1b1b1d;
+        border: 1px solid #2f2f33;
+        border-radius: 8px;
+        padding: 10px;
+        display: block;
+        overflow: auto;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-top: 12px;
+      }
+      .box {
+        border: 1px solid #2f2f33;
+        border-radius: 10px;
+        padding: 12px;
+        background: #141416;
+      }
+      .title {
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: #7CFF7C;
+      }
+      .hint {
+        color: #b4b4b8;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+      .raw {
+        border-color: #d11a2a;
+      }
+      .enc {
+        border-color: #1a8917;
+      }
+      a {
+        color: #7CFF7C;
+      }
+      button {
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 1px solid #2f2f33;
+        background: #1b1b1d;
+        color: #eaeaea;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #222226;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>ParamScan Test Page</h2>
+    <div class="hint">
+      This page reflects query parameters in different contexts so you can verify:
+      <ul>
+        <li><b>RAW reflection</b> (dangerous for XSS)</li>
+        <li><b>HTML-encoded / safe reflection</b></li>
+        <li>Param discovery from URL/DOM</li>
+      </ul>
+      Recommended: enable <b>Passive Reflection Test</b> (it’s on by default in your current build).
+    </div>
+
+    <pre id="url"></pre>
+
+    <div class="grid">
+      <div class="box raw">
+        <div class="title">RAW reflection (innerHTML)</div>
+        <div class="hint">
+          Param: <code>raw</code> — inserted with <code>innerHTML</code> (should be <b>RAW</b>).
+        </div>
+        <div id="rawTarget"></div>
+      </div>
+
+      <div class="box enc">
+        <div class="title">Encoded/safe reflection (textContent)</div>
+        <div class="hint">
+          Param: <code>safe</code> — inserted with <code>textContent</code> (should be treated as safe).
+        </div>
+        <div id="safeTarget"></div>
+      </div>
+
+      <div class="box">
+        <div class="title">DOM param sources</div>
+        <div class="hint">
+          The extension should also pick up param names from forms/links.
+        </div>
+
+        <form method="GET" action="">
+          <label>
+            <span class="hint">Form field name:</span>
+            <input name="formParam" value="demo" />
+          </label>
+          <button type="submit">Submit</button>
+        </form>
+
+        <p class="hint" style="margin-top: 10px">
+          Link with params:
+          <a href="?raw=TEST&safe=TEST&linkParam=1">Click to load params</a>
+        </p>
+      </div>
+    </div>
+
+    <div class="box" style="margin-top: 12px">
+      <div class="title">Quick start</div>
+      <div class="hint">
+        Use this URL (edit path as needed for your machine):
+      </div>
+      <pre id="example"></pre>
+      <button id="openExample">Reload with XSS markers</button>
+    </div>
+
+    <script>
+      const params = new URLSearchParams(location.search);
+      const raw = params.get("raw") || "";
+      const safe = params.get("safe") || "";
+
+      document.getElementById("url").textContent = "Current URL:\n" + location.href;
+
+      // RAW: dangerous reflection (simulates vulnerable sink)
+      document.getElementById("rawTarget").innerHTML =
+        "RAW value: " + raw + " (rendered via innerHTML)";
+
+      // SAFE: encoded by using textContent
+      document.getElementById("safeTarget").textContent =
+        'SAFE value: ' + safe + " (rendered via textContent)";
+
+      // Example URL including the same marker pattern ParamScan sends (PSxxxxxx\"><)
+      const marker = "PSDEMO";
+      const payload = marker + '"><';
+      const ex = new URL(location.href);
+      ex.searchParams.set("raw", payload);
+      ex.searchParams.set("safe", payload);
+      ex.searchParams.set("q", "1");
+      ex.searchParams.set("id", "123");
+      document.getElementById("example").textContent = ex.toString();
+
+      document.getElementById("openExample").addEventListener("click", () => {
+        location.href = ex.toString();
+      });
+    </script>
+  </body>
+</html>
+
