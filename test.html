@@ -65,13 +65,14 @@
     </style>
   </head>
   <body>
-    <h2>ParamScan Test Page</h2>
+    <h2>ParamScan Test Page (Advanced)</h2>
     <div class="hint">
       This page reflects query parameters in different contexts so you can verify:
       <ul>
         <li><b>RAW reflection</b> (dangerous for XSS)</li>
-        <li><b>HTML-encoded / safe reflection</b></li>
-        <li>Param discovery from URL/DOM</li>
+        <li><b>HTML-encoded reflection</b> (entities like <code>&amp;quot;</code>, <code>&amp;gt;</code>, <code>&amp;lt;</code>)</li>
+        <li><b>URL-encoded occurrences</b> (percent-encoding)</li>
+        <li>Multiple sink contexts (HTML, text, attribute)</li>
       </ul>
       Recommended: enable <b>Passive Reflection Test</b> (it’s on by default in your current build).
     </div>
@@ -82,17 +83,33 @@
       <div class="box raw">
         <div class="title">RAW reflection (innerHTML)</div>
         <div class="hint">
-          Param: <code>raw</code> — inserted with <code>innerHTML</code> (should be <b>RAW</b>).
+          Param: <code>raw</code> — inserted with <code>innerHTML</code>.
         </div>
         <div id="rawTarget"></div>
       </div>
 
       <div class="box enc">
-        <div class="title">Encoded/safe reflection (textContent)</div>
+        <div class="title">Text reflection (textContent)</div>
         <div class="hint">
-          Param: <code>safe</code> — inserted with <code>textContent</code> (should be treated as safe).
+          Param: <code>safe</code> — inserted with <code>textContent</code>.
         </div>
         <div id="safeTarget"></div>
+      </div>
+
+      <div class="box enc">
+        <div class="title">Explicit HTML-encoded output (entities)</div>
+        <div class="hint">
+          Param: <code>enc</code> — we manually encode <code>"</code>, <code>&lt;</code>, <code>&gt;</code> into entities and render via <code>innerHTML</code>.
+        </div>
+        <div id="encTarget"></div>
+      </div>
+
+      <div class="box raw">
+        <div class="title">Attribute reflection (data-*)</div>
+        <div class="hint">
+          Param: <code>attr</code> — written into <code>data-ref</code> attribute (useful for attribute-context checks).
+        </div>
+        <div id="attrTarget" data-ref=""></div>
       </div>
 
       <div class="box">
@@ -111,7 +128,7 @@
 
         <p class="hint" style="margin-top: 10px">
           Link with params:
-          <a href="?raw=TEST&safe=TEST&linkParam=1">Click to load params</a>
+          <a href="?raw=TEST&safe=TEST&enc=TEST&attr=TEST&linkParam=1">Click to load params</a>
         </p>
       </div>
     </div>
@@ -129,6 +146,8 @@
       const params = new URLSearchParams(location.search);
       const raw = params.get("raw") || "";
       const safe = params.get("safe") || "";
+      const enc = params.get("enc") || "";
+      const attr = params.get("attr") || "";
 
       document.getElementById("url").textContent = "Current URL:\n" + location.href;
 
@@ -140,12 +159,32 @@
       document.getElementById("safeTarget").textContent =
         'SAFE value: ' + safe + " (rendered via textContent)";
 
+      function htmlEncodeEntities(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      // Explicit HTML-encoded reflection (entities are visible in HTML source)
+      document.getElementById("encTarget").innerHTML =
+        "ENC value (entities): " + htmlEncodeEntities(enc);
+
+      // Attribute reflection
+      const attrEl = document.getElementById("attrTarget");
+      attrEl.setAttribute("data-ref", attr);
+      attrEl.textContent = "attrTarget data-ref=" + attrEl.getAttribute("data-ref");
+
       // Example URL including the same marker pattern ParamScan sends (PSxxxxxx\"><)
       const marker = "PSDEMO";
       const payload = marker + '"><';
       const ex = new URL(location.href);
       ex.searchParams.set("raw", payload);
       ex.searchParams.set("safe", payload);
+      ex.searchParams.set("enc", payload);
+      ex.searchParams.set("attr", payload);
       ex.searchParams.set("q", "1");
       ex.searchParams.set("id", "123");
       document.getElementById("example").textContent = ex.toString();
